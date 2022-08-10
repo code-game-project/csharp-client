@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Directories.Net" Version="1.0.0" />
     <PackageReference Include="Websocket.Client" Version="4.4.43" />
   </ItemGroup>
 

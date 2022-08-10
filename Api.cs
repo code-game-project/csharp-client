@@ -68,7 +68,7 @@ public class Api
     public async Task<T> FetchGameConfig<T>(string gameId)
     {
         var result = await http.GetFromJsonAsync<GameConfigResponse<T>>(BaseURL + "/api/games/" + gameId, jsonOptions);
-        if (result == null || result.Config == null)
+        if (result == null || result.Config == null)
         {
             throw new JsonException("Invalid server response.");
         }
@@ -93,6 +93,26 @@ public class Api
             throw new JsonException("Invaild server response.");
         }
         return (result["game_id"], protect ? result["join_secret"] : "");
+    }
+
+    internal async Task<(string playerId, string playerSecret)> CreatePlayer(string gameId, string username, string joinSecret = "")
+    {
+        var requestData = new
+        {
+            Username = username,
+            JoinSecret = joinSecret
+        };
+
+        var res = await http.PostAsJsonAsync(BaseURL + "/api/games/" + gameId + "/players", requestData, jsonOptions);
+        res.EnsureSuccessStatusCode();
+
+        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(jsonOptions);
+        if (result == null || !result.ContainsKey("player_id") || !result.ContainsKey("player_secret"))
+        {
+            throw new JsonException("Invaild server response.");
+        }
+
+        return (result["player_id"], result["player_secret"]);
     }
 
     internal async Task<string> FetchUsername(string gameId, string playerId)
@@ -130,7 +150,7 @@ public class Api
 
     internal static string TrimURL(string url)
     {
-        url = url.TrimStart('/');
+        url = url.TrimEnd('/');
         string[] parts = url.Split("://");
         if (parts.Length < 2)
         {
