@@ -34,20 +34,85 @@ public class Api
     private static readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions
     {
         AllowTrailingCommas = true,
-        PropertyNamingPolicy = new SnakeCaseNamingPolicy()
+        PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
+        DictionaryKeyPolicy = new SnakeCaseNamingPolicy(),
     };
 
+    /// <summary>
+    /// Fetches the game info from the /api/info endpoint.
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="HttpRequestException">Thrown when the request fails.</exception>
+    /// <exception cref="JsonException">Thrown when the decoding of the response body fails.</exception>
     public async Task<GameInfo> FetchInfo()
     {
-        using var res = await http.GetAsync(BaseURL+"/api/info");
-        res.EnsureSuccessStatusCode();
-
-        var gameInfo = await res.Content.ReadFromJsonAsync<GameInfo>(jsonOptions);
+        var gameInfo = await http.GetFromJsonAsync<GameInfo>(BaseURL + "/api/info", jsonOptions);
         if (gameInfo == null || gameInfo.Name == "" || gameInfo.CGVersion == "")
         {
-            throw new JsonException("Missing name and/or cg_version property.");
+            throw new JsonException("Invalid server response.");
         }
         return gameInfo;
+    }
+
+    private class GameConfigResponse<T>
+    {
+        public T? Config { get; set; }
+    }
+    /// <summary>
+    /// Fetches the game config from the server.
+    /// </summary>
+    /// <typeparam name="T">The type of the game config.</typeparam>
+    /// <param name="gameId">The ID of the game.</param>
+    /// <returns>The config of the game.</returns>
+    /// <exception cref="JsonException">Thrown when the response of the server is invalid.</exception>
+    public async Task<T> FetchGameConfig<T>(string gameId)
+    {
+        var result = await http.GetFromJsonAsync<GameConfigResponse<T>>(BaseURL + "/api/games/" + gameId, jsonOptions);
+        if (result == null || result.Config == null)
+        {
+            throw new JsonException("Invalid server response.");
+        }
+        return result.Config;
+    }
+
+    internal async Task<(string gameId, string joinSecret)> CreateGame(bool makePublic, bool protect, object? config = null)
+    {
+        var requestData = new
+        {
+            Public = makePublic,
+            Protected = protect,
+            Config = config
+        };
+
+        var res = await http.PostAsJsonAsync(BaseURL + "/api/games", requestData, jsonOptions);
+        res.EnsureSuccessStatusCode();
+
+        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(jsonOptions);
+        if (result == null || !result.ContainsKey("game_id") || (protect && !result.ContainsKey("join_secret")))
+        {
+            throw new JsonException("Invaild server response.");
+        }
+        return (result["game_id"], protect ? result["join_secret"] : "");
+    }
+
+    internal async Task<string> FetchUsername(string gameId, string playerId)
+    {
+        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players/" + playerId, jsonOptions);
+        if (result == null || !result.ContainsKey("username"))
+        {
+            throw new JsonException("Invalid server response.");
+        }
+        return result["username"];
+    }
+
+    internal async Task<Dictionary<string, string>> FetchPlayers(string gameId)
+    {
+        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players", jsonOptions);
+        if (result == null)
+        {
+            throw new JsonException("Invalid server response.");
+        }
+        return result;
     }
 
     internal static async Task<Api> Create(string url)
