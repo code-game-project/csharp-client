@@ -2,8 +2,10 @@ namespace CodeGame;
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Reactive.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Websocket.Client;
 
 public class SnakeCaseNamingPolicy : JsonNamingPolicy
 {
@@ -28,6 +30,7 @@ public class Api
     }
 
     public string URL { get; private set; }
+    public bool TLS { get; private set; }
     public string BaseURL { get; private set; }
 
     private static readonly HttpClient http = new HttpClient();
@@ -73,6 +76,16 @@ public class Api
             throw new JsonException("Invalid server response.");
         }
         return result.Config;
+    }
+
+    internal async Task<WebsocketClient> Connect(string gameId, string playerId, string playerSecret, Func<ResponseMessage, Task> onMessage)
+    {
+        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL)+"/api/games/"+gameId+"/connect?player_id="+playerId+"&player_secret="+playerSecret));
+        client.ReconnectTimeout = null;
+        client.ErrorReconnectTimeout = null;
+        client.MessageReceived.Select(msg => Observable.FromAsync(async () => await onMessage(msg))).Concat().Subscribe();
+        await client.StartOrFail();
+        return client;
     }
 
     internal async Task<(string gameId, string joinSecret)> CreateGame(bool makePublic, bool protect, object? config = null)
@@ -145,6 +158,7 @@ public class Api
     private Api(string trimmedURL, bool tls)
     {
         this.URL = trimmedURL;
+        this.TLS = tls;
         this.BaseURL = GetBaseURL("http", tls, trimmedURL);
     }
 

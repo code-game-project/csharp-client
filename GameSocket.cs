@@ -1,14 +1,19 @@
 ﻿namespace CodeGame;
 
+using System.Net.WebSockets;
+using System.Reactive.Linq;
 using System.Text.Json;
+using Websocket.Client;
 
-public class GameSocket
+public class GameSocket : IDisposable
 {
     private static readonly string CGVersion = "0.7";
     public Api Api { get; private set; }
     public Session Session { get; private set; }
 
     private Dictionary<string, string> usernameCache = new Dictionary<string, string>();
+    private WebsocketClient? wsClient;
+    private ManualResetEvent exitEvent = new ManualResetEvent(false);
 
     /// <summary>
     /// Creates a new game socket.
@@ -113,11 +118,11 @@ public class GameSocket
     public async Task Connect(string gameId, string playerId, string playerSecret)
     {
         if (Session.GameURL != "") throw new Exception("This socket is already connected to a game.");
-        // TODO: start websocket connection
+
+        wsClient = await Api.Connect(gameId, playerId, playerSecret, OnMessageReceived);
+        wsClient.DisconnectionHappened.Subscribe((info) => exitEvent.Set());
 
         Session = new Session(Api.URL, "", gameId, playerId, playerSecret);
-
-        // TODO: StartListenLoop();
 
         usernameCache = await Api.FetchPlayers(gameId);
         Session.Username = usernameCache[playerId];
@@ -133,6 +138,21 @@ public class GameSocket
         }
     }
 
+    /// <summary>
+    /// Blocks until the connection is closed.
+    /// </summary>
+    public void Wait()
+    {
+        exitEvent.WaitOne();
+    }
+
+    public void Dispose()
+    {
+        if (wsClient == null) return;
+        wsClient.Stop(WebSocketCloseStatus.NormalClosure, "Connection closed.").Wait();
+        wsClient.Dispose();
+    }
+
     public async Task<string> Username(string playerId)
     {
         string? username;
@@ -140,6 +160,12 @@ public class GameSocket
         username = await Api.FetchUsername(Session.GameId, playerId);
         usernameCache.Add(playerId, username);
         return username;
+    }
+
+    private async Task OnMessageReceived(ResponseMessage msg)
+    {
+        if (msg.MessageType != WebSocketMessageType.Text) return;
+        Console.WriteLine("Received: " + msg.Text);
     }
 
     private GameSocket(Api api)
