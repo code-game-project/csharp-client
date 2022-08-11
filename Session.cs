@@ -23,6 +23,14 @@ public class Session
         this.PlayerSecret = playerSecret;
     }
 
+    /// <summary>
+    /// Loads a session from disk.
+    /// </summary>
+    /// <param name="gameURL">The URL of the game.</param>
+    /// <param name="username">The username of the player.</param>
+    /// <returns>The loaded session.</returns>
+    /// <exception cref="JsonException">Thrown when the session file is invalid.</exception>
+    /// <exception cref="IOException">Thrown when the session file cannot be read.</exception>
     public static Session Load(string gameURL, string username)
     {
         using var file = File.Open(Path.Combine(gamesPath, Uri.EscapeDataString(gameURL), username + ".json"), FileMode.Open);
@@ -34,9 +42,15 @@ public class Session
         return new Session(gameURL, username, data["game_id"], data["player_id"], data["player_secret"]);
     }
 
+    /// <summary>
+    /// Writes the session to disk.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when one or more fields of the session are empty.</exception>
+    /// <exception cref="IOException">Thrown when the session file cannot be written.</exception>
     public void Save()
     {
-        if (GameURL == "") throw new Exception("Empty game URL.");
+        if (GameURL == "" || Username == "" || GameId == "" || PlayerId == "" || PlayerSecret == "")
+            throw new InvalidOperationException("The session is not complete.");
 
         var dir = Path.Combine(gamesPath, Uri.EscapeDataString(this.GameURL));
 
@@ -51,6 +65,10 @@ public class Session
         JsonSerializer.Serialize<Dictionary<string, string>>(file, data);
     }
 
+    /// <summary>
+    /// Deletes the session file.
+    /// </summary>
+    /// <exception cref="IOException">Thrown when the session file cannot be deleted.</exception>
     public void Remove()
     {
         if (GameURL == "") return;

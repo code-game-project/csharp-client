@@ -151,6 +151,27 @@ public class GameSocket : IDisposable
     }
 
     /// <summary>
+    /// Connects to the game as a spectator.
+    /// </summary>
+    /// <param name="gameId">The ID of the game.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the socket is already connected to a game.</exception>
+    /// <exception cref="WebSocketException">Thrown when the websocket connection could not be established.</exception>
+    public async Task Spectate(string gameId)
+    {
+        if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
+
+        wsClient = await Api.Spectate(gameId, OnMessageReceived);
+        wsClient.DisconnectionHappened.Subscribe((info) =>
+        {
+            exitEvent.Set();
+        });
+
+        Session = new Session(Api.URL, "", gameId, "", "");
+
+        usernameCache = await Api.FetchPlayers(gameId);
+    }
+
+    /// <summary>
     /// Blocks until the connection is closed.
     /// </summary>
     public void Wait()

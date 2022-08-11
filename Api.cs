@@ -98,6 +98,16 @@ public class Api
         return client;
     }
 
+    internal async Task<WebsocketClient> Spectate(string gameId, Action<ResponseMessage> onMessage)
+    {
+        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + "/api/games/" + gameId + "/spectate"));
+        client.ReconnectTimeout = null;
+        client.ErrorReconnectTimeout = null;
+        client.MessageReceived.Subscribe(onMessage);
+        await client.StartOrFail();
+        return client;
+    }
+
     internal async Task<(string gameId, string joinSecret)> CreateGame(bool makePublic, bool protect, object? config = null)
     {
         var requestData = new
@@ -141,7 +151,7 @@ public class Api
     internal async Task<string> FetchUsername(string gameId, string playerId)
     {
         var res = await http.GetAsync(BaseURL + "/api/games/" + gameId + "/players");
-        if (res.StatusCode == HttpStatusCode.NotFound) throw new CodeGameException("The player does not exist in the game.");
+        if (res.StatusCode == HttpStatusCode.NotFound) throw new CodeGameException("The player does not exist in the game.");
         await ensureSuccessful(res);
         var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
         if (result == null || !result.ContainsKey("username"))
