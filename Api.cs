@@ -131,19 +131,9 @@ public class Api
         return result.Config;
     }
 
-    internal async Task<WebsocketClient> Connect(string gameId, string playerId, string playerSecret, Action<ResponseMessage> onMessage)
+    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Action<ResponseMessage> onMessage)
     {
-        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + "/api/games/" + gameId + "/connect?player_id=" + playerId + "&player_secret=" + playerSecret));
-        client.ReconnectTimeout = null;
-        client.ErrorReconnectTimeout = null;
-        client.MessageReceived.Subscribe(onMessage);
-        await client.StartOrFail();
-        return client;
-    }
-
-    internal async Task<WebsocketClient> Spectate(string gameId, Action<ResponseMessage> onMessage)
-    {
-        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + "/api/games/" + gameId + "/spectate"));
+        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint));
         client.ReconnectTimeout = null;
         client.ErrorReconnectTimeout = null;
         client.MessageReceived.Subscribe(onMessage);

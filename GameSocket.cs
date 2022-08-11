@@ -40,9 +40,7 @@ public class GameSocket : IDisposable
         catch (Exception e)
         {
             if (e is HttpRequestException || e is JsonException)
-            {
                 throw new ArgumentException("The provided URL does not point to a valid CodeGame game server.", "url");
-            }
             throw;
         }
     }
@@ -128,7 +126,7 @@ public class GameSocket : IDisposable
     {
         if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
 
-        wsClient = await Api.Connect(gameId, playerId, playerSecret, OnMessageReceived);
+        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/connect?player_id={playerId}&player_secret={playerSecret}", OnMessageReceived);
         wsClient.DisconnectionHappened.Subscribe((info) =>
         {
             exitEvent.Set();
@@ -160,7 +158,7 @@ public class GameSocket : IDisposable
     {
         if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
 
-        wsClient = await Api.Spectate(gameId, OnMessageReceived);
+        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/spectate", OnMessageReceived);
         wsClient.DisconnectionHappened.Subscribe((info) =>
         {
             exitEvent.Set();
