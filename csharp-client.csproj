@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PackageId>CodeGame.Client</PackageId>
+    <Version>0.1.1</Version>
+    <Authors>Julian Hofmann</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>CodeGame</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>

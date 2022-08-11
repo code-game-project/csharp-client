@@ -1,4 +1,4 @@
-namespace CodeGame;
+namespace CodeGame.Client;
 
 using System.Net;
 using System.Net.Http.Json;

@@ -1,4 +1,4 @@
-namespace CodeGame;
+namespace CodeGame.Client;
 
 using System.Text.Json;
 using Directories.Net;
@@ -49,7 +49,7 @@ public class Session
     /// <exception cref="IOException">Thrown when the session file cannot be written.</exception>
     public void Save()
     {
-        if (GameURL == "" || Username == "" || GameId == "" || PlayerId == "" || PlayerSecret == "")
+        if (GameURL == "" || Username == "" || GameId == "" || PlayerId == "" || PlayerSecret == "")
             throw new InvalidOperationException("The session is not complete.");
 
         var dir = Path.Combine(gamesPath, Uri.EscapeDataString(this.GameURL));

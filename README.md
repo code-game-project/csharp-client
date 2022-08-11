@@ -4,6 +4,12 @@
 
 The C# client library for [CodeGame](https://code-game.org).
 
+## Installation
+
+```
+dotnet add package CodeGame.Client
+```
+
 ## Usage
 
 ```csharp

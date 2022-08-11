@@ -1,4 +1,4 @@
-namespace CodeGame;
+namespace CodeGame.Client;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
