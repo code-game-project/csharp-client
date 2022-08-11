@@ -3,7 +3,13 @@ namespace CodeGame;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+/// <summary>
+/// Base class of all event data objects.
+/// </summary>
 public abstract class EventData { }
+/// <summary>
+/// Base class of all command data objects.
+/// </summary>
 public abstract class CommandData { }
 
 internal interface IEventCallbacks
@@ -12,7 +18,7 @@ internal interface IEventCallbacks
     public void RemoveCallback(Guid id);
 }
 
-internal class Event<T> where T: EventData
+internal class Event<T> where T : EventData
 {
     public string Name { get; set; }
     public T Data { get; set; }
@@ -25,7 +31,7 @@ internal class Event<T> where T: EventData
     }
 }
 
-internal class Command<T> where T: CommandData
+internal class Command<T> where T : CommandData
 {
     public string Name { get; set; }
     public T Data { get; set; }
@@ -38,7 +44,7 @@ internal class Command<T> where T: CommandData
     }
 }
 
-internal class EventCallbacks<T> : IEventCallbacks where T: EventData
+internal class EventCallbacks<T> : IEventCallbacks where T : EventData
 {
     private Dictionary<Guid, Action<T>> callbacks = new Dictionary<Guid, Action<T>>();
     private Dictionary<Guid, Func<T, Task>> asyncCallbacks = new Dictionary<Guid, Func<T, Task>>();

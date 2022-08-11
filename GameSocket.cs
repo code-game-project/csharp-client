@@ -21,7 +21,7 @@ public class GameSocket : IDisposable
     /// </summary>
     /// <param name="url">The URL of the game server. The protocol should be omitted.</param>
     /// <returns>A new instance of GameSocket.</returns>
-    /// <exception cref="Exception">Thrown when the url does not point to a valid CodeGame game server.</exception>
+    /// <exception cref="ArgumentException">Thrown when the url does not point to a valid CodeGame game server.</exception>
     public static async Task<GameSocket> Create(string url)
     {
         try
@@ -41,7 +41,7 @@ public class GameSocket : IDisposable
         {
             if (e is HttpRequestException || e is JsonException)
             {
-                throw new Exception("The provided URL does not point to a valid CodeGame game server.");
+                throw new ArgumentException("The provided URL does not point to a valid CodeGame game server.", "url");
             }
             throw;
         }
@@ -53,6 +53,7 @@ public class GameSocket : IDisposable
     /// <param name="makePublic">Whether to make the created game public.</param>
     /// <param name="config">The game config.</param>
     /// <returns>The ID of the created game.</returns>
+    /// <exception cref="CodeGameException">Thrown when the server refuses to create a new game.</exception>
     /// <exception cref="HttpRequestException">Thrown when the http request fails.</exception>
     /// <exception cref="JsonException">Thrown when the server response is invalid.</exception>
     public async Task<string> CreateGame(bool makePublic, object? config = null)
@@ -67,6 +68,7 @@ public class GameSocket : IDisposable
     /// <param name="joinSecret">The secret for joining the game.</param>
     /// <param name="config">The game config.</param>
     /// <returns>A named tuple of the game ID and the join secret.</returns>
+    /// <exception cref="CodeGameException">Thrown when the server refuses to create a new game.</exception>
     /// <exception cref="HttpRequestException">Thrown when the http request fails.</exception>
     /// <exception cref="JsonException">Thrown when server response is invalid.</exception>
     public async Task<(string gameId, string joinSecret)> CreateProtectedGame(bool makePublic, object? config = null)
@@ -80,12 +82,14 @@ public class GameSocket : IDisposable
     /// <param name="gameId">The ID of the game.</param>
     /// <param name="username">The desired username.</param>
     /// <param name="joinSecret">The join secret of the game. (only needed when the game is protected)</param>
-    /// <exception cref="Exception">Thrown when the socket is already connected to a game.</exception>
+    /// <exception cref="CodeGameException">Thrown when the server refuses to create a new player in the game.</exception>
+    /// <exception cref="WebSocketException">Thrown when the websocket connection could not be established.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the socket is already connected to a game.</exception>
     /// <exception cref="HttpRequestException">Thrown when the http request fails.</exception>
     /// <exception cref="JsonException">Thrown when the server response is invalid.</exception>
     public async Task Join(string gameId, string username, string joinSecret = "")
     {
-        if (Session.GameURL != "") throw new Exception("This socket is already connected to a game.");
+        if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
         var (playerId, playerSecret) = await Api.CreatePlayer(gameId, username, joinSecret);
         await Connect(gameId, playerId, playerSecret);
     }
@@ -94,10 +98,13 @@ public class GameSocket : IDisposable
     /// Loads the session from disk and reconnects to the game.
     /// </summary>
     /// <param name="username">The username of the session.</param>
-    /// <exception cref="Exception">Thrown when the socket is already connected to a game.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the socket is already connected to a game.</exception>
+    /// <exception cref="WebSocketException">Thrown when the websocket connection could not be established.</exception>
+    /// <exception cref="IOException">Thrown when the session does not exist.</exception>
+    /// <exception cref="JsonException">Thrown when the session file is corrupted.</exception>
     public async Task RestoreSession(string username)
     {
-        if (Session.GameURL != "") throw new Exception("This socket is already connected to a game.");
+        if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
         var session = Session.Load(Api.URL, username);
         try
         {
@@ -115,10 +122,11 @@ public class GameSocket : IDisposable
     /// <param name="gameId">The ID of the game.</param>
     /// <param name="playerId">The ID of the player.</param>
     /// <param name="playerSecret">The secret of the player.</param>
-    /// <exception cref="Exception">Thrown when the socket is already connected to a game.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the socket is already connected to a game.</exception>
+    /// <exception cref="WebSocketException">Thrown when the websocket connection could not be established.</exception>
     public async Task Connect(string gameId, string playerId, string playerSecret)
     {
-        if (Session.GameURL != "") throw new Exception("This socket is already connected to a game.");
+        if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
 
         wsClient = await Api.Connect(gameId, playerId, playerSecret, OnMessageReceived);
         wsClient.DisconnectionHappened.Subscribe((info) =>
@@ -150,6 +158,9 @@ public class GameSocket : IDisposable
         exitEvent.WaitOne();
     }
 
+    /// <summary>
+    /// Closes the underlying websocket connection.
+    /// </summary>
     public void Dispose()
     {
         if (wsClient == null) return;
@@ -157,6 +168,14 @@ public class GameSocket : IDisposable
         wsClient.Dispose();
     }
 
+    /// <summary>
+    /// Registers a callback that is triggered every time the event is received.
+    /// </summary>
+    /// <typeparam name="T">The type of the event data.</typeparam>
+    /// <param name="eventName">The name of the event.</param>
+    /// <param name="callback">The callback function.</param>
+    /// <param name="once">Only trigger the the callback the first time the event is received.</param>
+    /// <returns>An ID that can be used to remove the callback.</returns>
     public Guid On<T>(string eventName, Action<T> callback, bool once = false) where T : EventData
     {
         if (!eventListeners.ContainsKey(eventName)) eventListeners.Add(eventName, new EventCallbacks<T>());
@@ -164,6 +183,14 @@ public class GameSocket : IDisposable
         return callbacks.AddCallback(callback, once);
     }
 
+    /// <summary>
+    /// Registers a callback that is triggered every time the event is received.
+    /// </summary>
+    /// <typeparam name="T">The type of the event data.</typeparam>
+    /// <param name="eventName">The name of the event.</param>
+    /// <param name="callback">The callback function.</param>
+    /// <param name="once">Only trigger the the callback the first time the event is received.</param>
+    /// <returns>An ID that can be used to remove the callback.</returns>
     public Guid On<T>(string eventName, Func<T, Task> callback, bool once = false) where T : EventData
     {
         if (!eventListeners.ContainsKey(eventName)) eventListeners.Add(eventName, new EventCallbacks<T>());
@@ -171,20 +198,42 @@ public class GameSocket : IDisposable
         return callbacks.AddCallback(callback, once);
     }
 
+    /// <summary>
+    /// Removes an event callback.
+    /// </summary>
+    /// <param name="eventName">The name of the event.</param>
+    /// <param name="id">The ID of the callback.</param>
     public void RemoveCallback(string eventName, Guid id)
     {
         if (!eventListeners.ContainsKey(eventName)) return;
         eventListeners[eventName].RemoveCallback(id);
     }
 
+    /// <summary>
+    /// Sends the command to the server.
+    /// </summary>
+    /// <typeparam name="T">The type of the event data.</typeparam>
+    /// <param name="commandName">The name of the command.</param>
+    /// <param name="data">The command data.</param>
+    /// <exception cref="InvalidOperationException">Thrown when socket is not connected to a player.</exception>
+    /// <exception cref="JsonException">Thrown when the command could not be serialized.</exception>
     public void Send<T>(string commandName, T data) where T : CommandData
     {
+        if (wsClient == null || Session.PlayerId == "") throw new InvalidOperationException("The socket is not connected to a player.");
         Command<T> e = new Command<T>(commandName, data);
         var json = JsonSerializer.Serialize<Command<T>>(e, Api.JsonOptions);
         if (json == null) throw new JsonException("Failed to serialize command.");
         wsClient?.Send(json);
     }
 
+    /// <summary>
+    /// Retrieves the username of the player from the player cache and fetches it from the server if it is not already in there.
+    /// </summary>
+    /// <param name="playerId">The ID of the player.</param>
+    /// <returns>The username of the player.</returns>
+    /// <exception cref="CodeGameException">Thrown when the player does not exist in the game.</exception>
+    /// <exception cref="HttpRequestException">Thrown when the http request failed.</exception>
+    /// <exception cref="JsonException">Thrown when the server response could not be deserialized.</exception>
     public async Task<string> Username(string playerId)
     {
         string? username;
@@ -212,7 +261,11 @@ public class GameSocket : IDisposable
             var e = JsonSerializer.Deserialize<EventNameObj>(msg.Text, Api.JsonOptions);
             TriggerEventListeners(e.Name, msg.Text); ;
         }
-        catch (JsonException) { }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            if (e is not JsonException) Environment.Exit(134);
+        }
     }
 
     private GameSocket(Api api)

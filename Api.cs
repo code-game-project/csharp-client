@@ -29,8 +29,17 @@ public class Api
         public string? RepositoryURL { get; set; }
     }
 
+    /// <summary>
+    /// The URL of the game server without any protocol or trailing slashes.
+    /// </summary>
     public string URL { get; private set; }
+    /// <summary>
+    /// Whether the game server supports TLS.
+    /// </summary>
     public bool TLS { get; private set; }
+    /// <summary>
+    /// The URL of the game server including the protocol and without a trailing slash.
+    /// </summary>
     public string BaseURL { get; private set; }
 
     internal static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
@@ -99,7 +108,7 @@ public class Api
         };
 
         var res = await http.PostAsJsonAsync(BaseURL + "/api/games", requestData, JsonOptions);
-        res.EnsureSuccessStatusCode();
+        await ensureSuccessful(res);
 
         var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
         if (result == null || !result.ContainsKey("game_id") || (protect && !result.ContainsKey("join_secret")))
@@ -118,7 +127,7 @@ public class Api
         };
 
         var res = await http.PostAsJsonAsync(BaseURL + "/api/games/" + gameId + "/players", requestData, JsonOptions);
-        res.EnsureSuccessStatusCode();
+        await ensureSuccessful(res);
 
         var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
         if (result == null || !result.ContainsKey("player_id") || !result.ContainsKey("player_secret"))
@@ -131,7 +140,10 @@ public class Api
 
     internal async Task<string> FetchUsername(string gameId, string playerId)
     {
-        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players/" + playerId, JsonOptions);
+        var res = await http.GetAsync(BaseURL + "/api/games/" + gameId + "/players");
+        if (res.StatusCode == HttpStatusCode.NotFound) throw new CodeGameException("The player does not exist in the game.");
+        await ensureSuccessful(res);
+        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
         if (result == null || !result.ContainsKey("username"))
         {
             throw new JsonException("Invalid server response.");
@@ -193,6 +205,29 @@ public class Api
         catch (HttpRequestException)
         {
             return false;
+        }
+    }
+
+    private async static Task ensureSuccessful(HttpResponseMessage? res)
+    {
+        if (res == null) throw new HttpRequestException("Received no response from the server.");
+        try
+        {
+            res.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException e)
+        {
+            try
+            {
+                var msg = await res.Content.ReadAsStringAsync();
+                if (msg != null && msg != "")
+                    throw new CodeGameException(msg, e);
+            }
+            catch (Exception ex)
+            {
+                if (ex is CodeGameException) throw;
+            }
+            throw;
         }
     }
 }
