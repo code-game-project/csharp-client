@@ -4,6 +4,40 @@
 
 The C# client library for [CodeGame](https://code-game.org).
 
+## Usage
+
+```csharp
+// Create a new game socket.
+using var socket = await GameSocket.Create("games.code-game.org/example");
+
+// Create a new private game.
+var gameId = await socket.CreateGame(false);
+
+// Join a game.
+await socket.Join(gameId, "username");
+
+// Spectate a game.
+await socket.Spectate(gameId);
+
+// Connect with an existing session.
+await socket.RestoreSession("username");
+
+// Register an event listener for the `my_event` event.
+socket.On<MyEvent>("my_event", (data) =>
+{
+    // TODO: do something with `data`
+});
+
+// Send a `hello_world` command.
+socket.Send<HelloWorldCmd>("hello_world", new HelloWorldCmd
+{
+    Message = "Hello, World!"
+})
+
+// Wait until the connection is closed.
+socket.Wait();
+```
+
 ## License
 
 MIT License
