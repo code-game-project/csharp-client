@@ -1,8 +1,11 @@
 namespace CodeGame.Client;
 
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Numerics;
 using System.Reactive.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Websocket.Client;
@@ -11,7 +14,45 @@ public class SnakeCaseNamingPolicy : JsonNamingPolicy
 {
     public override string ConvertName(string name)
     {
-        return string.Concat(name.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c : c.ToString())).ToLower();
+        StringBuilder sbuilder = new StringBuilder();
+        for (var i = 0; i < name.Length; i++)
+        {
+            if (char.IsLower(name[i]) && i < name.Length - 1 && char.IsUpper(name[i + 1]))
+            {
+                sbuilder.Append(name[i]);
+                sbuilder.Append('_');
+                continue;
+            }
+            if (char.IsUpper(name[i]) && i > 0 && i < name.Length - 1 && char.IsUpper(name[i - 1]) && char.IsLower(name[i + 1]))
+            {
+                sbuilder.Append('_');
+                sbuilder.Append(name[i]);
+                continue;
+            }
+            sbuilder.Append(name[i]);
+        }
+        return sbuilder.ToString().ToLower();
+    }
+}
+
+public class BigIntegerConverter : JsonConverter<BigInteger>
+{
+    public override BigInteger Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.String) throw new JsonException($"Found token {reader.TokenType} but expected token {JsonTokenType.String}.");
+        var token = reader.Read();
+        using var doc = JsonDocument.ParseValue(ref reader);
+        BigInteger result;
+        var success = BigInteger.TryParse(doc.RootElement.GetString()!, NumberStyles.AllowLeadingSign, NumberFormatInfo.InvariantInfo, out result);
+        if (!success) throw new JsonException($"Could not convert {token.ToString()} to BigInteger.");
+        return result;
+    }
+
+    public override void Write(Utf8JsonWriter writer, BigInteger value, JsonSerializerOptions options)
+    {
+        var str = value.ToString(NumberFormatInfo.InvariantInfo);
+        using var doc = JsonDocument.Parse(str);
+        doc.WriteTo(writer);
     }
 }
 
@@ -20,12 +61,10 @@ public class Api
     public class GameInfo
     {
         public string Name { get; set; } = "";
-        [JsonPropertyName("cg_version")]
         public string CGVersion { get; set; } = "";
         public string? DisplayName { get; set; }
         public string? Description { get; set; }
         public string? Version { get; set; }
-        [JsonPropertyName("repository_url")]
         public string? RepositoryURL { get; set; }
     }
 
@@ -47,6 +86,10 @@ public class Api
         AllowTrailingCommas = true,
         PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
         DictionaryKeyPolicy = new SnakeCaseNamingPolicy(),
+        Converters = {
+            new JsonStringEnumConverter(new SnakeCaseNamingPolicy(), false),
+            new BigIntegerConverter(),
+        }
     };
 
     private static readonly HttpClient http = new HttpClient();
