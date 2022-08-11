@@ -33,13 +33,14 @@ public class Api
     public bool TLS { get; private set; }
     public string BaseURL { get; private set; }
 
-    private static readonly HttpClient http = new HttpClient();
-    private static readonly JsonSerializerOptions jsonOptions = new JsonSerializerOptions
+    internal static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
     {
         AllowTrailingCommas = true,
         PropertyNamingPolicy = new SnakeCaseNamingPolicy(),
         DictionaryKeyPolicy = new SnakeCaseNamingPolicy(),
     };
+
+    private static readonly HttpClient http = new HttpClient();
 
     /// <summary>
     /// Fetches the game info from the /api/info endpoint.
@@ -49,7 +50,7 @@ public class Api
     /// <exception cref="JsonException">Thrown when the decoding of the response body fails.</exception>
     public async Task<GameInfo> FetchInfo()
     {
-        var gameInfo = await http.GetFromJsonAsync<GameInfo>(BaseURL + "/api/info", jsonOptions);
+        var gameInfo = await http.GetFromJsonAsync<GameInfo>(BaseURL + "/api/info", JsonOptions);
         if (gameInfo == null || gameInfo.Name == "" || gameInfo.CGVersion == "")
         {
             throw new JsonException("Invalid server response.");
@@ -70,7 +71,7 @@ public class Api
     /// <exception cref="JsonException">Thrown when the response of the server is invalid.</exception>
     public async Task<T> FetchGameConfig<T>(string gameId)
     {
-        var result = await http.GetFromJsonAsync<GameConfigResponse<T>>(BaseURL + "/api/games/" + gameId, jsonOptions);
+        var result = await http.GetFromJsonAsync<GameConfigResponse<T>>(BaseURL + "/api/games/" + gameId, JsonOptions);
         if (result == null || result.Config == null)
         {
             throw new JsonException("Invalid server response.");
@@ -78,12 +79,12 @@ public class Api
         return result.Config;
     }
 
-    internal async Task<WebsocketClient> Connect(string gameId, string playerId, string playerSecret, Func<ResponseMessage, Task> onMessage)
+    internal async Task<WebsocketClient> Connect(string gameId, string playerId, string playerSecret, Action<ResponseMessage> onMessage)
     {
-        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL)+"/api/games/"+gameId+"/connect?player_id="+playerId+"&player_secret="+playerSecret));
+        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + "/api/games/" + gameId + "/connect?player_id=" + playerId + "&player_secret=" + playerSecret));
         client.ReconnectTimeout = null;
         client.ErrorReconnectTimeout = null;
-        client.MessageReceived.Select(msg => Observable.FromAsync(async () => await onMessage(msg))).Concat().Subscribe();
+        client.MessageReceived.Subscribe(onMessage);
         await client.StartOrFail();
         return client;
     }
@@ -97,10 +98,10 @@ public class Api
             Config = config
         };
 
-        var res = await http.PostAsJsonAsync(BaseURL + "/api/games", requestData, jsonOptions);
+        var res = await http.PostAsJsonAsync(BaseURL + "/api/games", requestData, JsonOptions);
         res.EnsureSuccessStatusCode();
 
-        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(jsonOptions);
+        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
         if (result == null || !result.ContainsKey("game_id") || (protect && !result.ContainsKey("join_secret")))
         {
             throw new JsonException("Invaild server response.");
@@ -116,10 +117,10 @@ public class Api
             JoinSecret = joinSecret
         };
 
-        var res = await http.PostAsJsonAsync(BaseURL + "/api/games/" + gameId + "/players", requestData, jsonOptions);
+        var res = await http.PostAsJsonAsync(BaseURL + "/api/games/" + gameId + "/players", requestData, JsonOptions);
         res.EnsureSuccessStatusCode();
 
-        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(jsonOptions);
+        var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
         if (result == null || !result.ContainsKey("player_id") || !result.ContainsKey("player_secret"))
         {
             throw new JsonException("Invaild server response.");
@@ -130,7 +131,7 @@ public class Api
 
     internal async Task<string> FetchUsername(string gameId, string playerId)
     {
-        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players/" + playerId, jsonOptions);
+        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players/" + playerId, JsonOptions);
         if (result == null || !result.ContainsKey("username"))
         {
             throw new JsonException("Invalid server response.");
@@ -140,7 +141,7 @@ public class Api
 
     internal async Task<Dictionary<string, string>> FetchPlayers(string gameId)
     {
-        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players", jsonOptions);
+        var result = await http.GetFromJsonAsync<Dictionary<string, string>>(BaseURL + "/api/games/" + gameId + "/players", JsonOptions);
         if (result == null)
         {
             throw new JsonException("Invalid server response.");

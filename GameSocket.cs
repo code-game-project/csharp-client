@@ -14,6 +14,7 @@ public class GameSocket : IDisposable
     private Dictionary<string, string> usernameCache = new Dictionary<string, string>();
     private WebsocketClient? wsClient;
     private ManualResetEvent exitEvent = new ManualResetEvent(false);
+    private Dictionary<string, IEventCallbacks> eventListeners = new Dictionary<string, IEventCallbacks>();
 
     /// <summary>
     /// Creates a new game socket.
@@ -120,7 +121,10 @@ public class GameSocket : IDisposable
         if (Session.GameURL != "") throw new Exception("This socket is already connected to a game.");
 
         wsClient = await Api.Connect(gameId, playerId, playerSecret, OnMessageReceived);
-        wsClient.DisconnectionHappened.Subscribe((info) => exitEvent.Set());
+        wsClient.DisconnectionHappened.Subscribe((info) =>
+        {
+            exitEvent.Set();
+        });
 
         Session = new Session(Api.URL, "", gameId, playerId, playerSecret);
 
@@ -148,9 +152,37 @@ public class GameSocket : IDisposable
 
     public void Dispose()
     {
-        if (wsClient == null) return;
+        if (wsClient == null) return;
         wsClient.Stop(WebSocketCloseStatus.NormalClosure, "Connection closed.").Wait();
         wsClient.Dispose();
+    }
+
+    public Guid On<T>(string eventName, Action<T> callback, bool once = false) where T : EventData
+    {
+        if (!eventListeners.ContainsKey(eventName)) eventListeners.Add(eventName, new EventCallbacks<T>());
+        var callbacks = (EventCallbacks<T>)eventListeners[eventName];
+        return callbacks.AddCallback(callback, once);
+    }
+
+    public Guid On<T>(string eventName, Func<T, Task> callback, bool once = false) where T : EventData
+    {
+        if (!eventListeners.ContainsKey(eventName)) eventListeners.Add(eventName, new EventCallbacks<T>());
+        var callbacks = (EventCallbacks<T>)eventListeners[eventName];
+        return callbacks.AddCallback(callback, once);
+    }
+
+    public void RemoveCallback(string eventName, Guid id)
+    {
+        if (!eventListeners.ContainsKey(eventName)) return;
+        eventListeners[eventName].RemoveCallback(id);
+    }
+
+    public void Send<T>(string commandName, T data) where T : CommandData
+    {
+        Command<T> e = new Command<T>(commandName, data);
+        var json = JsonSerializer.Serialize<Command<T>>(e, Api.JsonOptions);
+        if (json == null) throw new JsonException("Failed to serialize command.");
+        wsClient?.Send(json);
     }
 
     public async Task<string> Username(string playerId)
@@ -162,10 +194,25 @@ public class GameSocket : IDisposable
         return username;
     }
 
-    private async Task OnMessageReceived(ResponseMessage msg)
+    private void TriggerEventListeners(string eventName, string eventJson)
+    {
+        if (!eventListeners.ContainsKey(eventName)) return;
+        eventListeners[eventName].Call(eventJson);
+    }
+
+    private struct EventNameObj
+    {
+        public string Name { get; set; }
+    }
+    private void OnMessageReceived(ResponseMessage msg)
     {
         if (msg.MessageType != WebSocketMessageType.Text) return;
-        Console.WriteLine("Received: " + msg.Text);
+        try
+        {
+            var e = JsonSerializer.Deserialize<EventNameObj>(msg.Text, Api.JsonOptions);
+            TriggerEventListeners(e.Name, msg.Text); ;
+        }
+        catch (JsonException) { }
     }
 
     private GameSocket(Api api)
