@@ -131,12 +131,12 @@ public class Api
         return result.Config;
     }
 
-    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Action<ResponseMessage> onMessage)
+    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Func<ResponseMessage, Task> onMessage)
     {
         var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint));
         client.ReconnectTimeout = null;
         client.ErrorReconnectTimeout = null;
-        client.MessageReceived.Subscribe(onMessage);
+        client.MessageReceived.Select(msg => Observable.FromAsync(async () => await onMessage(msg))).Concat().Subscribe();
         await client.StartOrFail();
         return client;
     }

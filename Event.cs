@@ -14,7 +14,7 @@ public abstract class CommandData { }
 
 internal interface IEventCallbacks
 {
-    public void Call(string dataJson);
+    public Task Call(string dataJson);
     public void RemoveCallback(Guid id);
 }
 
@@ -46,17 +46,21 @@ internal class Command<T> where T : CommandData
 
 internal class EventCallbacks<T> : IEventCallbacks where T : EventData
 {
-    private Dictionary<Guid, Action<T>> callbacks = new Dictionary<Guid, Action<T>>();
-    private Dictionary<Guid, Func<T, Task>> asyncCallbacks = new Dictionary<Guid, Func<T, Task>>();
+    private Dictionary<Guid, Func<T, Task>> callbacks = new Dictionary<Guid, Func<T, Task>>();
 
     public Guid AddCallback(Action<T> cb, bool once = false)
+    {
+        return AddCallback(async (data) => await Task.Run(() => cb(data)), once);
+    }
+
+    public Guid AddCallback(Func<T, Task> cb, bool once = false)
     {
         var id = Guid.NewGuid();
         if (once)
         {
-            callbacks.Add(id, (data) =>
+            callbacks.Add(id, async (data) =>
             {
-                cb(data);
+                await cb(data);
                 RemoveCallback(id);
             });
         }
@@ -67,42 +71,20 @@ internal class EventCallbacks<T> : IEventCallbacks where T : EventData
         return id;
     }
 
-    public Guid AddCallback(Func<T, Task> cb, bool once = false)
+    public async Task Call(string dataJson)
     {
-        var id = Guid.NewGuid();
-        if (once)
-        {
-            asyncCallbacks.Add(id, async (data) =>
-            {
-                await cb(data);
-                RemoveCallback(id);
-            });
-        }
-        else
-        {
-            asyncCallbacks.Add(id, cb);
-        }
-        return id;
-    }
-
-    public void Call(string dataJson)
-    {
-        if (callbacks.Count == 0 && asyncCallbacks.Count == 0) return;
+        if (callbacks.Count == 0 && callbacks.Count == 0) return;
         var data = JsonSerializer.Deserialize<Event<T>>(dataJson, Api.JsonOptions);
         if (data == null) return;
         foreach (var entry in callbacks)
         {
-            entry.Value(data.Data);
-        }
-        foreach (var entry in asyncCallbacks)
-        {
-            entry.Value(data.Data).Wait();
+            await entry.Value(data.Data);
         }
     }
 
     public void RemoveCallback(Guid id)
     {
         callbacks.Remove(id);
-        asyncCallbacks.Remove(id);
+        callbacks.Remove(id);
     }
 }

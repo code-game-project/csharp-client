@@ -262,23 +262,23 @@ public class GameSocket : IDisposable
         return username;
     }
 
-    private void TriggerEventListeners(string eventName, string eventJson)
+    private async Task TriggerEventListeners(string eventName, string eventJson)
     {
         if (!eventListeners.ContainsKey(eventName)) return;
-        eventListeners[eventName].Call(eventJson);
+        await eventListeners[eventName].Call(eventJson);
     }
 
     private struct EventNameObj
     {
         public string Name { get; set; }
     }
-    private void OnMessageReceived(ResponseMessage msg)
+    private async Task OnMessageReceived(ResponseMessage msg)
     {
         if (msg.MessageType != WebSocketMessageType.Text) return;
         try
         {
             var e = JsonSerializer.Deserialize<EventNameObj>(msg.Text, Api.JsonOptions);
-            TriggerEventListeners(e.Name, msg.Text); ;
+            await TriggerEventListeners(e.Name, msg.Text); ;
         }
         catch (Exception e)
         {

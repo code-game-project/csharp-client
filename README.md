@@ -35,7 +35,7 @@ socket.On<MyEvent>("my_event", (data) =>
 });
 
 // Send a `hello_world` command.
-socket.Send<HelloWorldCmd>("hello_world", new HelloWorldCmd
+socket.Send("hello_world", new HelloWorldCmd
 {
     Message = "Hello, World!"
 })

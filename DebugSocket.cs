@@ -17,7 +17,7 @@ public class DebugSocket : IDisposable
     private WebsocketClient? wsClient;
     private ManualResetEvent exitEvent = new ManualResetEvent(false);
 
-    private Dictionary<Guid, Action<DebugSeverity, string, string?>> eventListeners = new Dictionary<Guid, Action<DebugSeverity, string, string?>>();
+    private Dictionary<Guid, Func<DebugSeverity, string, string?, Task>> eventListeners = new Dictionary<Guid, Func<DebugSeverity, string, string?, Task>>();
 
     private bool trace = false, info = true, warning = true, error = true;
 
@@ -66,6 +66,16 @@ public class DebugSocket : IDisposable
     /// <param name="callback">The function to call.</param>
     /// <returns>The ID of the callback that can be used to remove it.</returns>
     public Guid OnMessage(Action<DebugSeverity, string, string?> callback)
+    {
+        return OnMessage(async (s, m, d) => await Task.Run(() => callback(s, m, d)));
+    }
+
+    /// <summary>
+    /// Registers a callback that is called when a debug message is received.
+    /// </summary>
+    /// <param name="callback">The function to call.</param>
+    /// <returns>The ID of the callback that can be used to remove it.</returns>
+    public Guid OnMessage(Func<DebugSeverity, string, string?, Task> callback)
     {
         var id = Guid.NewGuid();
         eventListeners.Add(id, callback);
@@ -144,7 +154,7 @@ public class DebugSocket : IDisposable
         this.Api = api;
     }
 
-    private void OnMessageReceived(ResponseMessage msg)
+    private async Task OnMessageReceived(ResponseMessage msg)
     {
         if (msg.MessageType != WebSocketMessageType.Text) return;
         try
@@ -167,7 +177,7 @@ public class DebugSocket : IDisposable
             var data = root.TryGetProperty("data", out dataElement) ? dataElement.ToString() : null;
             foreach (var cb in eventListeners)
             {
-                cb.Value(severity, message, data);
+                await cb.Value(severity, message, data);
             }
         }
         catch (Exception e)
