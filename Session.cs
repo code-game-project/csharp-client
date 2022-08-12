@@ -3,17 +3,37 @@ namespace CodeGame.Client;
 using System.Text.Json;
 using Directories.Net;
 
+/// <summary>
+/// Represents a CodeGame session.
+/// </summary>
 public class Session
 {
     private static readonly string gamesPath = Path.Combine(new BaseDirectories().DataDir, "codegame", "games");
 
-
+    /// <summary>
+    /// The URL of the game server.
+    /// </summary>
     public string GameURL { get; internal set; }
+    /// <summary>
+    /// The username of the player.
+    /// </summary>
     public string Username { get; internal set; }
+    /// <summary>
+    /// The ID of the game.
+    /// </summary>
     public string GameId { get; internal set; }
+    /// <summary>
+    /// The ID of the player.
+    /// </summary>
     public string PlayerId { get; internal set; }
+    /// <summary>
+    /// The player secret.
+    /// </summary>
     public string PlayerSecret { get; internal set; }
 
+    /// <summary>
+    /// Creates a new session.
+    /// </summary>
     public Session(string gameURL, string username, string gameId, string playerId, string playerSecret)
     {
         this.GameURL = gameURL;

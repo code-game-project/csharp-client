@@ -5,10 +5,18 @@ using System.Reactive.Linq;
 using System.Text.Json;
 using Websocket.Client;
 
+/// <summary>
+/// Represents a connection to a game server.
+/// </summary>
 public class GameSocket : IDisposable
 {
     private static readonly string CGVersion = "0.7";
+#pragma warning disable 1591
     public Api Api { get; private set; }
+#pragma warning restore 1591
+    /// <summary>
+    /// The current session.
+    /// </summary>
     public Session Session { get; private set; }
 
     private Dictionary<string, string> usernameCache = new Dictionary<string, string>();
@@ -63,7 +71,6 @@ public class GameSocket : IDisposable
     /// Creates a new protected game on the server.
     /// </summary>
     /// <param name="makePublic">Whether to make the created game public.</param>
-    /// <param name="joinSecret">The secret for joining the game.</param>
     /// <param name="config">The game config.</param>
     /// <returns>A named tuple of the game ID and the join secret.</returns>
     /// <exception cref="CodeGameException">Thrown when the server refuses to create a new game.</exception>

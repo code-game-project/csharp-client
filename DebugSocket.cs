@@ -4,14 +4,24 @@ using System.Net.WebSockets;
 using System.Text.Json;
 using Websocket.Client;
 
+/// <summary>
+/// Represents a debug severity.
+/// </summary>
 public enum DebugSeverity
 {
+#pragma warning disable 1591
     Error, Warning, Info, Trace
+#pragma warning restore 1591
 }
 
+/// <summary>
+/// Represents a debug connection to the server.
+/// </summary>
 public class DebugSocket : IDisposable
 {
+#pragma warning disable 1591
     public Api Api { get; private set; }
+#pragma warning restore 1591
 
     private Dictionary<string, string> usernameCache = new Dictionary<string, string>();
     private WebsocketClient? wsClient;

@@ -5,6 +5,7 @@
     <Version>0.2.1</Version>
     <Authors>Julian Hofmann</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>CodeGame</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>

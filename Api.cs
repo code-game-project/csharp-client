@@ -10,8 +10,16 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Websocket.Client;
 
+/// <summary>
+/// JsonNamingPolicy for snake_case.
+/// </summary>
 public class SnakeCaseNamingPolicy : JsonNamingPolicy
 {
+    /// <summary>
+    /// Converts name to snake_case.
+    /// </summary>
+    /// <param name="name">The key name.</param>
+    /// <returns>The key name converted to snake_case.</returns>
     public override string ConvertName(string name)
     {
         StringBuilder sbuilder = new StringBuilder();
@@ -35,8 +43,16 @@ public class SnakeCaseNamingPolicy : JsonNamingPolicy
     }
 }
 
+/// <summary>
+/// Converts big integers to strings and vice versa.
+/// </summary>
 public class BigIntegerConverter : JsonConverter<BigInteger>
 {
+    /// <summary>
+    /// Reads a string token as a BigInteger.
+    /// </summary>
+    /// <returns>The read BigInteger.</returns>
+    /// <exception cref="JsonException">Thrown when the conversion fails.</exception>
     public override BigInteger Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.String) throw new JsonException($"Found token {reader.TokenType} but expected token {JsonTokenType.String}.");
@@ -48,6 +64,9 @@ public class BigIntegerConverter : JsonConverter<BigInteger>
         return result;
     }
 
+    /// <summary>
+    /// Writes a BigInteger as a string.
+    /// </summary>
     public override void Write(Utf8JsonWriter writer, BigInteger value, JsonSerializerOptions options)
     {
         var str = value.ToString(NumberFormatInfo.InvariantInfo);
@@ -56,16 +75,24 @@ public class BigIntegerConverter : JsonConverter<BigInteger>
     }
 }
 
+/// <summary>
+/// Common methods for interfacing with CodeGame game servers.
+/// </summary>
 public class Api
 {
+    /// <summary>
+    /// Game info from the <c>/api/info</c> endpoint.
+    /// </summary>
     public class GameInfo
     {
+#pragma warning disable 1591
         public string Name { get; set; } = "";
         public string CGVersion { get; set; } = "";
         public string? DisplayName { get; set; }
         public string? Description { get; set; }
         public string? Version { get; set; }
         public string? RepositoryURL { get; set; }
+#pragma warning restore 1591
     }
 
     /// <summary>
