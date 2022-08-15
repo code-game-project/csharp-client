@@ -253,7 +253,7 @@ public class Api
         {
             return url;
         }
-        return string.Join("://", parts);
+        return string.Join("://", parts.Skip(1).ToArray());
     }
 
     internal static string GetBaseURL(string protocol, bool tls, string trimmedURL)
