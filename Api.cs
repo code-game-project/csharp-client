@@ -210,7 +210,7 @@ public class Api
 
     internal async Task<string> FetchUsername(string gameId, string playerId)
     {
-        var res = await http.GetAsync(BaseURL + "/api/games/" + gameId + "/players");
+        var res = await http.GetAsync(BaseURL + "/api/games/" + gameId + "/players/" + playerId);
         if (res.StatusCode == HttpStatusCode.NotFound) throw new CodeGameException("The player does not exist in the game.");
         await ensureSuccessful(res);
         var result = await res.Content.ReadFromJsonAsync<Dictionary<string, string>>(JsonOptions);
