@@ -118,6 +118,7 @@ public class GameSocket : IDisposable
         catch
         {
             session.Remove();
+            throw;
         }
     }
 
