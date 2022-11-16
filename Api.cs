@@ -44,38 +44,6 @@ public class SnakeCaseNamingPolicy : JsonNamingPolicy
 }
 
 /// <summary>
-/// Converts big integers to strings and vice versa.
-/// </summary>
-public class BigIntegerConverter : JsonConverter<BigInteger>
-{
-    /// <summary>
-    /// Reads a string token as a BigInteger.
-    /// </summary>
-    /// <returns>The read BigInteger.</returns>
-    /// <exception cref="JsonException">Thrown when the conversion fails.</exception>
-    public override BigInteger Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        if (reader.TokenType != JsonTokenType.String) throw new JsonException($"Found token {reader.TokenType} but expected token {JsonTokenType.String}.");
-        var token = reader.Read();
-        using var doc = JsonDocument.ParseValue(ref reader);
-        BigInteger result;
-        var success = BigInteger.TryParse(doc.RootElement.GetString()!, NumberStyles.AllowLeadingSign, NumberFormatInfo.InvariantInfo, out result);
-        if (!success) throw new JsonException($"Could not convert {token.ToString()} to BigInteger.");
-        return result;
-    }
-
-    /// <summary>
-    /// Writes a BigInteger as a string.
-    /// </summary>
-    public override void Write(Utf8JsonWriter writer, BigInteger value, JsonSerializerOptions options)
-    {
-        var str = value.ToString(NumberFormatInfo.InvariantInfo);
-        using var doc = JsonDocument.Parse(str);
-        doc.WriteTo(writer);
-    }
-}
-
-/// <summary>
 /// Common methods for interfacing with CodeGame game servers.
 /// </summary>
 public class Api
@@ -115,7 +83,6 @@ public class Api
         DictionaryKeyPolicy = new SnakeCaseNamingPolicy(),
         Converters = {
             new JsonStringEnumConverter(new SnakeCaseNamingPolicy(), false),
-            new BigIntegerConverter(),
         }
     };
 
