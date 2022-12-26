@@ -132,7 +132,7 @@ public class Api
         {
             var client = new ClientWebSocket();
             if (playerSecret != "")
-                client.Options.SetRequestHeader("Player-Secret", playerSecret);
+                client.Options.SetRequestHeader("CG-Player-Secret", playerSecret);
             return client;
         });
         var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint), factory);
