@@ -10,7 +10,7 @@ using Websocket.Client;
 /// </summary>
 public class GameSocket : IDisposable
 {
-    private static readonly string CGVersion = "0.7";
+    private static readonly string CGVersion = "0.8";
 #pragma warning disable 1591
     public Api Api { get; private set; }
 #pragma warning restore 1591
@@ -134,7 +134,7 @@ public class GameSocket : IDisposable
     {
         if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
 
-        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/connect?player_id={playerId}&player_secret={playerSecret}", OnMessageReceived);
+        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/players/{playerId}/connect", OnMessageReceived, playerSecret);
         wsClient.DisconnectionHappened.Subscribe((info) =>
         {
             exitEvent.Set();

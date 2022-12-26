@@ -3,6 +3,7 @@ namespace CodeGame.Client;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.WebSockets;
 using System.Numerics;
 using System.Reactive.Linq;
 using System.Text;
@@ -125,9 +126,16 @@ public class Api
         return result.Config;
     }
 
-    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Func<ResponseMessage, Task> onMessage)
+    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Func<ResponseMessage, Task> onMessage, string playerSecret = "")
     {
-        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint));
+        var factory = new Func<ClientWebSocket>(() =>
+        {
+            var client = new ClientWebSocket();
+            if (playerSecret != "")
+                client.Options.SetRequestHeader("Player-Secret", playerSecret);
+            return client;
+        });
+        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint), factory);
         client.ReconnectTimeout = null;
         client.ErrorReconnectTimeout = null;
         client.MessageReceived.Select(msg => Observable.FromAsync(async () => await onMessage(msg))).Concat().Subscribe();
