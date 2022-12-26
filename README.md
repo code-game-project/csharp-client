@@ -1,6 +1,6 @@
 # C#-Client
 ![CodeGame Version](https://img.shields.io/badge/CodeGame-v0.8-orange)
-![Target](https://img.shields.io/badge/Framework-.Net%206-blue)
+![Target](https://img.shields.io/badge/Framework-.Net%207-blue)
 
 The C# client library for [CodeGame](https://code-game.org).
 
