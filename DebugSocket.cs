@@ -134,7 +134,7 @@ public class DebugSocket : IDisposable
     /// <param name="playerSecret">The secret of the player.</param>
     public async void DebugPlayer(string gameId, string playerId, string playerSecret)
     {
-        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/players/{playerId}/debug?trace={trace}&info={info}&warning={warning}&error={error}", OnMessageReceived, playerSecret);
+        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/players/{playerId}/debug?player_secret={playerSecret}&trace={trace}&info={info}&warning={warning}&error={error}", OnMessageReceived);
         wsClient.DisconnectionHappened.Subscribe((info) =>
         {
             exitEvent.Set();

@@ -134,7 +134,7 @@ public class GameSocket : IDisposable
     {
         if (Session.GameURL != "") throw new InvalidOperationException("This socket is already connected to a game.");
 
-        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/players/{playerId}/connect", OnMessageReceived, playerSecret);
+        wsClient = await Api.ConnectWebSocket($"/api/games/{gameId}/players/{playerId}/connect?player_secret={playerSecret}", OnMessageReceived);
         wsClient.DisconnectionHappened.Subscribe((info) =>
         {
             exitEvent.Set();

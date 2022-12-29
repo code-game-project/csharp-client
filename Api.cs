@@ -126,16 +126,9 @@ public class Api
         return result.Config;
     }
 
-    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Func<ResponseMessage, Task> onMessage, string playerSecret = "")
+    internal async Task<WebsocketClient> ConnectWebSocket(string endpoint, Func<ResponseMessage, Task> onMessage)
     {
-        var factory = new Func<ClientWebSocket>(() =>
-        {
-            var client = new ClientWebSocket();
-            if (playerSecret != "")
-                client.Options.SetRequestHeader("CG-Player-Secret", playerSecret);
-            return client;
-        });
-        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint), factory);
+        var client = new WebsocketClient(new Uri(GetBaseURL("ws", TLS, URL) + endpoint));
         client.ReconnectTimeout = null;
         client.ErrorReconnectTimeout = null;
         client.MessageReceived.Select(msg => Observable.FromAsync(async () => await onMessage(msg))).Concat().Subscribe();
